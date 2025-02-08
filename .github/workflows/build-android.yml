@@ -4,51 +4,53 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-android:
+  build-apk:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      # 检出代码
+      - uses: actions/checkout@v3
 
+      # 安装 Node.js 环境
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
 
-      - name: Install pnpm globally
-        run: npm install -g pnpm
-
+      # 安装项目依赖
       - name: Install dependencies
-        run: pnpm install
+        run: npm install
 
-      - name: Generate static site
-        run: pnpm run generate
+      # 打包 Vue 应用，生成构建输出（通常为 dist 文件夹）
+      - name: Build Vue App
+        run: npm run build
 
-      - name: Create www directory
-        run: mkdir -p www
-      
-      - name: Copy files to www
-        run: cp -r .output/public/* www/
+      # 如果还没集成 Capacitor, 则安装 Capacitor CLI 和核心库
+      - name: Install Capacitor dependencies
+        run: npm install --save @capacitor/core @capacitor/cli
 
-      - name: Add Android platform (if not already added)
-        run: npx cap add android || echo "Android platform already added"
+      # 同步 Capacitor 配置，将 web 构建文件同步到 Android 项目中
+      - name: Sync Capacitor Android project
+        run: npx cap sync android
 
-      - name: Copy assets to Android project
-        run: npx cap copy android
-
-      - name: Setup Java environment
+      # 设置 Java 环境（Android 构建需要 JDK）
+      - name: Setup Java
         uses: actions/setup-java@v3
         with:
-          distribution: 'temurin'
           java-version: '11'
+          distribution: 'temurin'
 
-      - name: Build APK with Gradle
+      # 如果需要还可以设置 Android SDK 环境，Ubuntu 的 runner 通常已经预装部分工具，
+      # 如有需要可扩展设置环境变量或者使用第三方 Action
+
+      # 进入 android 目录，使用 Gradle 构建 APK（这里构建 release 版本）
+      - name: Build Android APK
         working-directory: android
         run: ./gradlew assembleRelease
 
+      # 把打包好的 APK 文件作为构建产物上传
       - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: app-release.apk
           path: android/app/build/outputs/apk/release/app-release.apk

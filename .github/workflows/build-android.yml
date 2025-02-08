@@ -25,7 +25,10 @@ jobs:
       - name: Generate static site
         run: pnpm run generate
 
-      - name: Copy generated files to www folder
+      - name: Create www directory
+        run: mkdir -p www
+      
+      - name: Copy files to www
         run: cp -r .output/public/* www/
 
       - name: Add Android platform (if not already added)
